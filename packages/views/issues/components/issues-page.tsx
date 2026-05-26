@@ -236,7 +236,7 @@ export function IssuesPage() {
                 sort={sort}
               />
             ) : (
-              <ListView issues={issues} visibleStatuses={visibleStatuses} childProgressMap={childProgressMap} sort={sort} />
+              <ListView issues={issues} visibleStatuses={visibleStatuses} childProgressMap={childProgressMap} sort={sort} onMoveIssue={handleMoveIssue} />
             )}
           </div>
         )}

@@ -29,6 +29,8 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -61,6 +63,7 @@ import {
   type ActorFilterValue,
 } from "@multica/core/issues/stores/view-store";
 import { useViewStore, useViewStoreApi } from "@multica/core/issues/stores/view-store-context";
+import type { SortField, IssueGrouping, ViewMode } from "@multica/core/issues/stores/view-store";
 import {
   useIssuesScopeStore,
   type IssuesScope,
@@ -896,14 +899,13 @@ export function IssueDisplayControls({
                       }
                     />
                     <DropdownMenuContent align="start" className="w-auto">
-                      {GROUPING_OPTIONS.map((opt) => (
-                        <DropdownMenuItem
-                          key={opt.value}
-                          onClick={() => act.setGrouping(opt.value)}
-                        >
-                          {t(($) => $.display[GROUPING_LABEL_KEY[opt.value]])}
-                        </DropdownMenuItem>
-                      ))}
+                      <DropdownMenuRadioGroup value={grouping} onValueChange={(v) => act.setGrouping(v as IssueGrouping)}>
+                        {GROUPING_OPTIONS.map((opt) => (
+                          <DropdownMenuRadioItem key={opt.value} value={opt.value}>
+                            {t(($) => $.display[GROUPING_LABEL_KEY[opt.value]])}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -929,14 +931,13 @@ export function IssueDisplayControls({
                     }
                   />
                   <DropdownMenuContent align="start" className="w-auto">
-                    {SORT_OPTIONS.map((opt) => (
-                      <DropdownMenuItem
-                        key={opt.value}
-                        onClick={() => act.setSortBy(opt.value)}
-                      >
-                        {t(($) => $.display[SORT_LABEL_KEY[opt.value]])}
-                      </DropdownMenuItem>
-                    ))}
+                    <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => act.setSortBy(v as SortField)}>
+                      {SORT_OPTIONS.map((opt) => (
+                        <DropdownMenuRadioItem key={opt.value} value={opt.value}>
+                          {t(($) => $.display[SORT_LABEL_KEY[opt.value]])}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 {sortBy !== "position" && (
@@ -994,19 +995,19 @@ export function IssueDisplayControls({
                       <Button variant="outline" size="sm" className="gap-1 text-muted-foreground">
                         {viewMode === "board" ? (
                           <Columns3 className="size-3.5" />
-                        ) : viewMode === "gantt" && allowGantt ? (
-                          <ChartGantt className="size-3.5" />
                         ) : viewMode === "swimlane" ? (
                           <Waves className="size-3.5" />
+                        ) : viewMode === "gantt" && allowGantt ? (
+                          <ChartGantt className="size-3.5" />
                         ) : (
                           <List className="size-3.5" />
                         )}
                         {viewMode === "board"
                           ? t(($) => $.view.board)
-                          : viewMode === "gantt" && allowGantt
-                          ? t(($) => $.view.gantt)
                           : viewMode === "swimlane"
                           ? t(($) => $.view.swimlane)
+                          : viewMode === "gantt" && allowGantt
+                          ? t(($) => $.view.gantt)
                           : t(($) => $.view.list)}
                       </Button>
                     }
@@ -1016,35 +1017,37 @@ export function IssueDisplayControls({
               <TooltipContent side="bottom">
                 {viewMode === "board"
                   ? t(($) => $.view.tooltip_board)
-                  : viewMode === "gantt" && allowGantt
-                  ? t(($) => $.view.tooltip_gantt)
                   : viewMode === "swimlane"
                   ? t(($) => $.view.tooltip_swimlane)
+                  : viewMode === "gantt" && allowGantt
+                  ? t(($) => $.view.tooltip_gantt)
                   : t(($) => $.view.tooltip_list)}
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" className="w-auto">
               <DropdownMenuGroup>
                 <DropdownMenuLabel>{t(($) => $.view.section)}</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => act.setViewMode("board")}>
+              </DropdownMenuGroup>
+              <DropdownMenuRadioGroup value={viewMode} onValueChange={(v) => act.setViewMode(v as ViewMode)}>
+                <DropdownMenuRadioItem value="board">
                   <Columns3 />
                   {t(($) => $.view.board)}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => act.setViewMode("list")}>
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="list">
                   <List />
                   {t(($) => $.view.list)}
-                </DropdownMenuItem>
-                {allowGantt && (
-                  <DropdownMenuItem onClick={() => act.setViewMode("gantt")}>
-                    <ChartGantt />
-                    {t(($) => $.view.gantt)}
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => act.setViewMode("swimlane")}>
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="swimlane">
                   <Waves />
                   {t(($) => $.view.swimlane)}
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
+                </DropdownMenuRadioItem>
+                {allowGantt && (
+                  <DropdownMenuRadioItem value="gantt">
+                    <ChartGantt />
+                    {t(($) => $.view.gantt)}
+                  </DropdownMenuRadioItem>
+                )}
+              </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         )}

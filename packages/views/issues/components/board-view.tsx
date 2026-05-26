@@ -7,16 +7,13 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  pointerWithin,
-  closestCenter,
-  type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
 } from "@dnd-kit/core";
 import type { QueryKey } from "@tanstack/react-query";
 import { arrayMove } from "@dnd-kit/sortable";
-import type { Issue, IssueAssigneeGroup, IssueAssigneeType, IssueStatus, UpdateIssueRequest } from "@multica/core/types";
+import type { Issue, IssueAssigneeGroup, IssueStatus } from "@multica/core/types";
 import { useLoadMoreByAssigneeGroup, useLoadMoreByStatus } from "@multica/core/issues/mutations";
 import type { AssigneeGroupedIssuesFilter, IssueSortParam, MyIssuesFilter } from "@multica/core/issues/queries";
 import { useViewStore } from "@multica/core/issues/stores/view-store-context";
@@ -28,41 +25,17 @@ import { HiddenColumnsPanel, HiddenColumnRow } from "./hidden-columns-panel";
 import { InfiniteScrollSentinel } from "./infinite-scroll-sentinel";
 import type { ChildProgress } from "./list-row";
 import { useT } from "../../i18n";
-
-type BoardMoveUpdates = Pick<
-  UpdateIssueRequest,
-  "status" | "assignee_type" | "assignee_id" | "position"
->;
-
-const UNASSIGNED_GROUP_ID = "assignee:unassigned";
-
-function makeKanbanCollision(columnIds: Set<string>): CollisionDetection {
-  return (args) => {
-    const pointer = pointerWithin(args);
-    if (pointer.length > 0) {
-      const cards = pointer.filter((c) => !columnIds.has(c.id as string));
-      if (cards.length > 0) return cards;
-      return pointer;
-    }
-    return closestCenter(args);
-  };
-}
-
-function statusGroupId(status: IssueStatus): string {
-  return `status:${status}`;
-}
-
-function assigneeGroupId(
-  type: IssueAssigneeType | null,
-  id: string | null,
-): string {
-  return type && id ? `assignee:${type}:${id}` : UNASSIGNED_GROUP_ID;
-}
-
-function getIssueGroupId(issue: Issue, grouping: IssueGrouping): string {
-  if (grouping === "status") return statusGroupId(issue.status);
-  return assigneeGroupId(issue.assignee_type, issue.assignee_id);
-}
+import {
+  type DragMoveUpdates,
+  makeKanbanCollision,
+  statusGroupId,
+  assigneeGroupId,
+  buildColumns,
+  computePosition,
+  findColumn,
+  issueMatchesGroup,
+  getMoveUpdates,
+} from "../utils/drag-utils";
 
 function isStatusGroup(
   group: BoardColumnGroup,
@@ -132,65 +105,6 @@ function buildGroups(
   });
 }
 
-/** Build column ID arrays from TQ issue data (server-sorted). */
-function buildColumns(
-  issues: Issue[],
-  groups: BoardColumnGroup[],
-  grouping: IssueGrouping,
-): Record<string, string[]> {
-  const cols: Record<string, string[]> = {};
-  for (const group of groups) cols[group.id] = [];
-  for (const issue of issues) {
-    const gid = getIssueGroupId(issue, grouping);
-    if (cols[gid]) cols[gid].push(issue.id);
-  }
-  return cols;
-}
-
-/** Compute a float position for `activeId` based on its neighbors in `ids`. */
-function computePosition(ids: string[], activeId: string, issueMap: Map<string, Issue>): number {
-  const idx = ids.indexOf(activeId);
-  if (idx === -1) return 0;
-  const getPos = (id: string) => issueMap.get(id)?.position ?? 0;
-  if (ids.length === 1) return issueMap.get(activeId)?.position ?? 0;
-  if (idx === 0) return getPos(ids[1]!) - 1;
-  if (idx === ids.length - 1) return getPos(ids[idx - 1]!) + 1;
-  return (getPos(ids[idx - 1]!) + getPos(ids[idx + 1]!)) / 2;
-}
-
-/** Find which column contains a given ID (issue or column droppable). */
-function findColumn(
-  columns: Record<string, string[]>,
-  id: string,
-  columnIds: Set<string>,
-): string | null {
-  if (columnIds.has(id)) return id;
-  for (const [columnId, ids] of Object.entries(columns)) {
-    if (ids.includes(id)) return columnId;
-  }
-  return null;
-}
-
-function issueMatchesGroup(issue: Issue, group: BoardColumnGroup): boolean {
-  if (group.status) return issue.status === group.status;
-  return (
-    (issue.assignee_type ?? null) === (group.assigneeType ?? null) &&
-    (issue.assignee_id ?? null) === (group.assigneeId ?? null)
-  );
-}
-
-function getMoveUpdates(
-  group: BoardColumnGroup,
-  position: number,
-): BoardMoveUpdates {
-  if (group.status) return { status: group.status, position };
-  return {
-    assignee_type: group.assigneeType ?? null,
-    assignee_id: group.assigneeId ?? null,
-    position,
-  };
-}
-
 const EMPTY_PROGRESS_MAP = new Map<string, ChildProgress>();
 const EMPTY_IDS: string[] = [];
 
@@ -214,7 +128,7 @@ export function BoardView({
   assigneeGroupFilter?: AssigneeGroupedIssuesFilter;
   visibleStatuses: IssueStatus[];
   hiddenStatuses: IssueStatus[];
-  onMoveIssue: (issueId: string, updates: BoardMoveUpdates, onSettled?: () => void) => void;
+  onMoveIssue: (issueId: string, updates: DragMoveUpdates, onSettled?: () => void) => void;
   childProgressMap?: Map<string, ChildProgress>;
   /** When set, per-status load-more targets the scoped cache instead of the workspace one. */
   myIssuesScope?: string;
@@ -481,7 +395,7 @@ export function BoardView({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-1 min-h-0 gap-4 overflow-x-auto p-4">
+      <div className="flex flex-1 min-h-0 gap-4 overflow-x-auto p-2">
         {groups.length === 0 ? (
           <div className="flex min-w-full flex-1 items-center justify-center text-sm text-muted-foreground">
             {t(($) => $.board.empty_grouping)}

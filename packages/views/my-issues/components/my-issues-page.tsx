@@ -248,11 +248,9 @@ export function MyIssuesPage() {
         <span className="text-sm font-medium">{t(($) => $.page.breadcrumb)}</span>
       </PageHeader>
 
-      {/* Header: scope tabs (left) + controls (right) */}
-      <MyIssuesHeader allIssues={myIssues} />
-
-      {/* Content: scrollable */}
       <ViewStoreProvider store={myIssuesViewStore}>
+        {/* Header: scope tabs (left) + controls (right) */}
+        <MyIssuesHeader allIssues={myIssues} />
         {myIssues.length === 0 ? (
           <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-2 text-muted-foreground">
             <ListTodo className="h-10 w-10 text-muted-foreground/40" />
@@ -295,6 +293,7 @@ export function MyIssuesPage() {
                 myIssuesScope={scope}
                 myIssuesFilter={filter}
                 sort={sort}
+                onMoveIssue={handleMoveIssue}
               />
             )}
           </div>
