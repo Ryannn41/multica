@@ -16,7 +16,12 @@ import {
   useFileDropZone,
   FileDropOverlay,
 } from "../editor";
-import { useCreateFeedback, useFeedbackDraftStore, type FeedbackKind } from "@multica/core/feedback";
+import {
+  useCreateFeedback,
+  useFeedbackDraftStore,
+  FEEDBACK_KINDS,
+  type FeedbackKind,
+} from "@multica/core/feedback";
 import { useCurrentWorkspace } from "@multica/core/paths";
 import { useFileUpload } from "@multica/core/hooks/use-file-upload";
 import { api } from "@multica/core/api";
@@ -26,7 +31,7 @@ import { formatShortcut, modKey, enterKey } from "@multica/core/platform";
 
 const MAX_MESSAGE_LEN = 10000;
 
-const FEEDBACK_KINDS = new Set<FeedbackKind>(["bug", "feature", "general", "praise"]);
+const FEEDBACK_KIND_SET = new Set<FeedbackKind>(FEEDBACK_KINDS);
 
 function composeFeedbackInitialMessage(draftMessage: string, incomingInitialMessage: string) {
   const draft = draftMessage.trim();
@@ -59,7 +64,7 @@ export function FeedbackModal({
   const editorRef = useRef<ContentEditorRef>(null);
   const incomingInitialMessage =
     initialMessage ?? (typeof data?.initialMessage === "string" ? data.initialMessage : "");
-  const kind = typeof data?.kind === "string" && FEEDBACK_KINDS.has(data.kind as FeedbackKind)
+  const kind = typeof data?.kind === "string" && FEEDBACK_KIND_SET.has(data.kind as FeedbackKind)
     ? (data.kind as FeedbackKind)
     : undefined;
   const seededMessage = composeFeedbackInitialMessage(draft.message, incomingInitialMessage);

@@ -38,7 +38,7 @@ export function formatRouteErrorReport({
     normalized.stack ?? "<no stack>",
     "```",
     "",
-    "TODO: promote kind/context to structured feedback fields once the feedback API supports them.",
+    "TODO: promote error context to structured feedback fields once the feedback API supports them.",
   ].join("\n");
 }
 
