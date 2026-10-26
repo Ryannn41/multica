@@ -187,6 +187,9 @@ export function getPreviewKind(
   // that isTextLike would otherwise catch.
   if (isImageAttachment(contentType, filename)) return "image";
 
+  // Every text-backed renderer fetches through the same allowlisted proxy.
+  if (!isTextLike(contentType, filename)) return null;
+
   // Markdown — covers both the well-typed case and the common
   // server-side sniffer fallback (text/plain for .md).
   if (ct === "text/markdown" || ext === "md" || ext === "markdown") {
@@ -200,8 +203,7 @@ export function getPreviewKind(
   }
   if (structuredFormat(contentType, filename)) return "structured";
 
-  if (isTextLike(contentType, filename)) return "text";
-  return null;
+  return "text";
 }
 
 /**
