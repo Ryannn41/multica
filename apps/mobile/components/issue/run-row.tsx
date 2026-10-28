@@ -6,11 +6,12 @@
  * dispatched, running}`, and the status badge / colour swaps based on the
  * AgentTask.status enum.
  *
- * Tapping a past row is a no-op in v1 — the transcript-detail screen is
- * explicitly out of scope per /Users/qingnaiyuan/.claude/plans/
- * ok-plan-linked-taco.md.
+ * Terminal runs open their persisted execution record. Active rows keep the
+ * cancel affordance and are not links: this route is for historical records.
  */
 import { Alert, Pressable, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import type { AgentTask } from "@multica/core/types";
 import { Text } from "@/components/ui/text";
 import { ActorAvatar } from "@/components/ui/actor-avatar";
@@ -19,6 +20,8 @@ import { useActorLookup } from "@/data/use-actor-name";
 import { runFailureBadgeLabel } from "@/lib/run-failure-badge";
 import { timeAgo } from "@/lib/time-ago";
 import { useT } from "@/lib/i18n";
+import { runTranscriptRoute } from "@/lib/run-transcript";
+import { useWorkspaceStore } from "@/data/workspace-store";
 
 interface Props {
   task: AgentTask;
@@ -30,11 +33,18 @@ const ACTIVE_STATUSES: readonly AgentTask["status"][] = [
   "dispatched",
   "running",
 ];
+const TERMINAL_STATUSES: readonly AgentTask["status"][] = [
+  "completed",
+  "failed",
+  "cancelled",
+];
 
 export function RunRow({ task, issueId }: Props) {
   const { getName } = useActorLookup();
   const { t } = useT("issues");
+  const workspace = useWorkspaceStore((s) => s.currentWorkspaceSlug);
   const isActive = ACTIVE_STATUSES.includes(task.status);
+  const isTerminal = TERMINAL_STATUSES.includes(task.status);
   const summary =
     task.trigger_summary?.trim() || fallbackSummary(task, t);
   // Past tasks use completed_at when present (server fills it for terminal
@@ -42,8 +52,8 @@ export function RunRow({ task, issueId }: Props) {
   // long it's been waiting.
   const timestamp = task.completed_at || task.created_at;
 
-  return (
-    <View className="flex-row items-start gap-3 py-2">
+  const content = (
+    <>
       <ActorAvatar type="agent" id={task.agent_id} size={28} showPresence />
       <View className="flex-1 gap-1">
         <Text
@@ -61,7 +71,29 @@ export function RunRow({ task, issueId }: Props) {
         </View>
       </View>
       {isActive ? <CancelButton taskId={task.id} issueId={issueId} /> : null}
-    </View>
+      {isTerminal ? (
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          className="text-muted-foreground"
+        />
+      ) : null}
+    </>
+  );
+
+  if (!isTerminal || !workspace) {
+    return <View className="flex-row items-start gap-3 py-2">{content}</View>;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t("runs.open_transcript", { summary })}
+      onPress={() => router.push(runTranscriptRoute(workspace, issueId, task.id))}
+      className="flex-row items-start gap-3 py-2 active:opacity-60"
+    >
+      {content}
+    </Pressable>
   );
 }
 

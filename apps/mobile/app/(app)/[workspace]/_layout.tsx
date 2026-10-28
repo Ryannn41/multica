@@ -222,6 +222,13 @@ export default function WorkspaceLayout() {
           options={SHEET_OPTIONS}
         />
         <Stack.Screen name="issue/[id]/runs" options={SHEET_OPTIONS} />
+        <Stack.Screen
+          name="issue/[id]/run/[taskId]"
+          options={{
+            title: t("navigation:routes.execution_record"),
+            headerBackTitle: t("navigation:routes.runs"),
+          }}
+        />
         {/* Full emoji picker for a comment reaction. Pushed from the "+"
             button inside the comment long-press tapback row — see
             components/issue/comment-context-menu.tsx. */}
