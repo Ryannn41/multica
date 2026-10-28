@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/collapsible";
 import { Markdown } from "@/lib/markdown";
 import { useT } from "@/lib/i18n";
-import { buildRunTranscript, getRunDiagnostics } from "@/lib/run-transcript";
+import { buildRunTranscriptEntries, getRunDiagnostics, runToolContext } from "@/lib/run-transcript";
+import type { RunTranscriptEntry } from "@/lib/run-transcript";
 
 const DISPLAY_CLIP_CHARS = 8_000;
 
@@ -25,7 +26,7 @@ export function RunTranscript({
   header: React.ReactElement;
 }) {
   const { t } = useT("issues");
-  const timeline = useMemo(() => buildRunTranscript(items), [items]);
+  const timeline = useMemo(() => buildRunTranscriptEntries(items), [items]);
   const diagnostics = getRunDiagnostics(task);
 
   return (
@@ -40,7 +41,9 @@ export function RunTranscript({
         <View className="mb-4 gap-4">
           {header}
           {diagnostics ? (
-            <View className="gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-3">
+            <View className={`gap-2 rounded-lg border px-3 py-3 ${
+              task.status === "failed" ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"
+            }`}>
               {diagnostics.reasonKey ? (
                 <Text className="text-sm font-medium text-destructive">
                   {t(`chat:${diagnostics.reasonKey}`)}
@@ -77,7 +80,9 @@ function EntrySeparator() {
   return <View className="h-2" />;
 }
 
-function TranscriptEntry({ item }: { item: TaskMessagePayload }) {
+function TranscriptEntry({ item: entry }: { item: RunTranscriptEntry }) {
+  if (entry.kind === "tool") return <ToolEntry call={entry.call} result={entry.result} />;
+  const item = entry.message;
   switch (item.type) {
     case "thinking":
       return (
@@ -87,10 +92,6 @@ function TranscriptEntry({ item }: { item: TaskMessagePayload }) {
           </Text>
         </EntryCard>
       );
-    case "tool_use":
-      return <ToolCallEntry item={item} />;
-    case "tool_result":
-      return <ToolResultEntry item={item} />;
     case "error":
       return (
         <EntryCard icon="alert-circle-outline" labelKey="error" destructive>
@@ -113,30 +114,37 @@ function TranscriptEntry({ item }: { item: TaskMessagePayload }) {
   }
 }
 
-function ToolCallEntry({ item }: { item: TaskMessagePayload }) {
+function ToolEntry({ call, result }: { call?: TaskMessagePayload; result?: TaskMessagePayload }) {
   const { t } = useT("issues");
   const input =
-    item.input && Object.keys(item.input).length > 0
-      ? redactSecrets(JSON.stringify(item.input, null, 2))
+    call?.input && Object.keys(call.input).length > 0
+      ? redactSecrets(JSON.stringify(call.input, null, 2))
       : "—";
+  const detail = [call?.tool || result?.tool || t("runs.transcript.unknown_tool"), runToolContext(call)]
+    .filter(Boolean).join(" · ");
 
   return (
     <EntryCard
-      icon="construct-outline"
-      labelKey="tool_call"
-      detail={item.tool || t("runs.transcript.unknown_tool")}
+      icon={call ? "construct-outline" : "terminal-outline"}
+      labelKey={call ? "tool_call" : "tool_output"}
+      detail={detail}
       collapsible
     >
-      <View className="rounded-md bg-muted px-3 py-2">
-        <Text selectable className="font-mono text-xs text-muted-foreground">
-          {input}
-        </Text>
+      <View className="gap-2">
+        {call ? (
+          <View className="rounded-md bg-muted px-3 py-2">
+            <Text selectable className="font-mono text-xs text-muted-foreground">
+              {input}
+            </Text>
+          </View>
+        ) : null}
+        {result ? <ToolResultContent item={result} /> : null}
       </View>
     </EntryCard>
   );
 }
 
-function ToolResultEntry({ item }: { item: TaskMessagePayload }) {
+function ToolResultContent({ item }: { item: TaskMessagePayload }) {
   const { t } = useT("issues");
   const [showFullOutput, setShowFullOutput] = useState(false);
   const output = item.output ?? "";
@@ -146,7 +154,10 @@ function ToolResultEntry({ item }: { item: TaskMessagePayload }) {
     : output;
 
   return (
-    <EntryCard icon="terminal-outline" labelKey="tool_output" detail={item.tool} collapsible>
+    <View className="gap-2">
+      <Text className="text-xs font-medium text-muted-foreground">
+        {t("runs.transcript.tool_output")}
+      </Text>
       <View className="rounded-md bg-muted px-3 py-2">
         <Text selectable className="font-mono text-xs text-muted-foreground">
           {shown || "—"}
@@ -168,7 +179,7 @@ function ToolResultEntry({ item }: { item: TaskMessagePayload }) {
           {t("runs.transcript.truncated")}
         </Text>
       ) : null}
-    </EntryCard>
+    </View>
   );
 }
 
@@ -195,7 +206,7 @@ function EntryCard({
   const heading = (
     <>
       <Ionicons name={icon} size={14} color={destructive ? "#dc2626" : "#71717a"} />
-      <Text className={`flex-1 text-xs font-medium ${destructive ? "text-destructive" : "text-muted-foreground"}`}>
+      <Text numberOfLines={2} className={`flex-1 text-xs font-medium ${destructive ? "text-destructive" : "text-muted-foreground"}`}>
         {t(`runs.transcript.${labelKey}`)}{detail ? ` · ${detail}` : ""}
       </Text>
     </>

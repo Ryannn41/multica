@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ActorAvatar } from "@/components/ui/actor-avatar";
 import { RunTranscript } from "@/components/issue/run-transcript";
 import { issueTasksOptions } from "@/data/queries/issues";
-import { taskMessagesOptions } from "@/data/queries/chat";
+import { runTranscriptMessagesOptions } from "@/data/queries/chat";
+import { useRunTranscriptRealtime } from "@/data/realtime/use-run-transcript-realtime";
 import { useActorLookup } from "@/data/use-actor-name";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useT } from "@/lib/i18n";
@@ -24,7 +25,8 @@ export default function RunTranscriptRoute() {
   const task = taskId
     ? tasksQuery.data?.find((candidate) => candidate.id === taskId)
     : undefined;
-  const transcriptQuery = useQuery(taskMessagesOptions(task?.id));
+  const transcriptQuery = useQuery(runTranscriptMessagesOptions(task?.id));
+  useRunTranscriptRealtime(issueId, task?.id);
 
   const retry = () => {
     void tasksQuery.refetch();

@@ -59,6 +59,44 @@ export function buildRunTranscript(
   }));
 }
 
+export type RunTranscriptEntry =
+  | { kind: "message"; task_id: string; seq: number; message: TaskMessagePayload }
+  | { kind: "tool"; task_id: string; seq: number; call?: TaskMessagePayload; result?: TaskMessagePayload };
+
+/** Pair by opaque identity, never by completion order or a shared tool name. */
+export function buildRunTranscriptEntries(messages: readonly TaskMessagePayload[]): RunTranscriptEntry[] {
+  const entries: RunTranscriptEntry[] = [];
+  const pending = new Map<string, Extract<RunTranscriptEntry, { kind: "tool" }>>();
+
+  for (const message of buildRunTranscript(messages)) {
+    // Missing IDs stay unpaired rather than guessing which parallel call won.
+    const key = message.call_id ? `${message.task_id}:${message.call_id}` : null;
+    if (message.type === "tool_use") {
+      const entry = { kind: "tool" as const, task_id: message.task_id, seq: message.seq, call: message };
+      entries.push(entry);
+      if (key) pending.set(key, entry);
+    } else if (message.type === "tool_result") {
+      const call = key ? pending.get(key) : undefined;
+      if (call && key) {
+        call.result = message;
+        pending.delete(key);
+      } else {
+        entries.push({ kind: "tool", task_id: message.task_id, seq: message.seq, result: message });
+      }
+    } else {
+      entries.push({ kind: "message", task_id: message.task_id, seq: message.seq, message });
+    }
+  }
+  return entries;
+}
+
+export function runToolContext(call: TaskMessagePayload | undefined): string | undefined {
+  const input = call?.input;
+  const context = [input?.command, input?.file_path, input?.path, input?.pattern, input?.query]
+    .find((value): value is string => typeof value === "string" && value.length > 0);
+  return context ? redactSecrets(context) : undefined;
+}
+
 export function getRunDiagnostics(
   task: Pick<AgentTask, "status" | "failure_reason" | "error">,
 ) {

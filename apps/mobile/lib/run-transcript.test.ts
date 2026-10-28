@@ -4,11 +4,13 @@ import type { TaskMessagePayload } from "@multica/core/types";
 import { AgentTaskSchema } from "@/data/schemas";
 import {
   buildRunTranscript,
+  buildRunTranscriptEntries,
   getRunDiagnostics,
   isCancellableRunStatus,
   isRunTranscriptTaskId,
   RUN_TRANSCRIPT_PATHNAME,
   runTranscriptRoute,
+  runToolContext,
 } from "./run-transcript";
 
 describe("run transcript route", () => {
@@ -38,6 +40,48 @@ function message(seq: number, type: TaskMessagePayload["type"], content?: string
 }
 
 describe("historical run transcript", () => {
+  it("pairs parallel same-name calls by ID when results finish in reverse order", () => {
+    const callA = { ...message(1, "tool_use"), tool: "Bash", call_id: "A", input: { command: "test A" } };
+    const callB = { ...message(2, "tool_use"), tool: "Bash", call_id: "B", input: { command: "test B" } };
+    const resultB = { ...message(3, "tool_result"), tool: "Bash", call_id: "B", output: "B failed" };
+    const resultA = { ...message(4, "tool_result"), tool: "Bash", call_id: "A", output: "A passed" };
+    const source = [callA, callB, resultB, resultA];
+    const original = structuredClone(source);
+
+    expect(buildRunTranscriptEntries(source)).toEqual([
+      { kind: "tool", task_id: "task-1", seq: 1, call: callA, result: resultA },
+      { kind: "tool", task_id: "task-1", seq: 2, call: callB, result: resultB },
+    ]);
+    expect(source).toEqual(original);
+    expect(runToolContext(callA)).toBe("test A");
+    expect(runToolContext(callB)).toBe("test B");
+  });
+
+  it("keeps unmatched and unidentified tool output without guessing a call", () => {
+    const call = { ...message(1, "tool_use"), tool: "Read", call_id: "known" };
+    const orphan = { ...message(2, "tool_result"), tool: "Read", call_id: "missing", output: "orphan" };
+    const noId = { ...message(3, "tool_result"), tool: "Read", output: "legacy" };
+    expect(buildRunTranscriptEntries([call, orphan, noId, message(4, "text", "done")])).toEqual([
+      { kind: "tool", task_id: "task-1", seq: 1, call },
+      { kind: "tool", task_id: "task-1", seq: 2, result: orphan },
+      { kind: "tool", task_id: "task-1", seq: 3, result: noId },
+      { kind: "message", task_id: "task-1", seq: 4, message: message(4, "text", "done") },
+    ]);
+  });
+
+  it("does not pair identical call IDs from different tasks", () => {
+    const call = { ...message(1, "tool_use"), call_id: "shared" };
+    const result = { ...message(2, "tool_result"), task_id: "another-task", call_id: "shared" };
+    expect(buildRunTranscriptEntries([call, result])).toHaveLength(2);
+  });
+
+  it("redacts tool context and retains file paths in the collapsed heading", () => {
+    expect(runToolContext({ ...message(1, "tool_use"), input: { file_path: "src/main.ts" } })).toBe("src/main.ts");
+    expect(runToolContext({ ...message(1, "tool_use"), input: { command: "echo Authorization: Bearer fake-value" } }))
+      .toBe("echo Authorization: Bearer [REDACTED]");
+    expect(runToolContext(undefined)).toBeUndefined();
+  });
+
   it("sorts and joins streamed Markdown without changing the source messages", () => {
     const messages = [
       message(3, "text", "\n```"),
