@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from "nativewind";
 import type { AgentTask, TaskMessagePayload } from "@multica/core/types";
 import { redactSecrets } from "@multica/core/security/redact-secrets";
 import { Text } from "@/components/ui/text";
@@ -13,6 +14,7 @@ import { Markdown } from "@/lib/markdown";
 import { useT } from "@/lib/i18n";
 import { buildRunTranscriptEntries, getRunDiagnostics, runToolContext } from "@/lib/run-transcript";
 import type { RunTranscriptEntry } from "@/lib/run-transcript";
+import { THEME } from "@/lib/theme";
 
 const DISPLAY_CLIP_CHARS = 8_000;
 
@@ -200,12 +202,14 @@ function EntryCard({
 }) {
   const { t } = useT("issues");
   const [open, setOpen] = useState(false);
+  const { colorScheme } = useColorScheme();
+  const theme = THEME[colorScheme === "dark" ? "dark" : "light"];
   const className = `rounded-lg border px-3 py-3 ${
     destructive ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"
   }`;
   const heading = (
     <>
-      <Ionicons name={icon} size={14} color={destructive ? "#dc2626" : "#71717a"} />
+      <Ionicons name={icon} size={14} color={destructive ? theme.destructive : theme.mutedForeground} />
       <Text numberOfLines={2} className={`flex-1 text-xs font-medium ${destructive ? "text-destructive" : "text-muted-foreground"}`}>
         {t(`runs.transcript.${labelKey}`)}{detail ? ` · ${detail}` : ""}
       </Text>
@@ -220,7 +224,7 @@ function EntryCard({
           <Ionicons
             name={open ? "chevron-down" : "chevron-forward"}
             size={14}
-            color="#71717a"
+            color={theme.mutedForeground}
           />
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-2">{children}</CollapsibleContent>

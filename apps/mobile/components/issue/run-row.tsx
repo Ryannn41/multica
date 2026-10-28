@@ -10,6 +10,7 @@
  */
 import { Alert, Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from "nativewind";
 import { router } from "expo-router";
 import type { AgentTask } from "@multica/core/types";
 import { Text } from "@/components/ui/text";
@@ -21,6 +22,7 @@ import { timeAgo } from "@/lib/time-ago";
 import { useT } from "@/lib/i18n";
 import { isCancellableRunStatus, runTranscriptRoute } from "@/lib/run-transcript";
 import { useWorkspaceStore } from "@/data/workspace-store";
+import { THEME } from "@/lib/theme";
 
 interface Props {
   task: AgentTask;
@@ -36,6 +38,8 @@ const TERMINAL_STATUSES: readonly AgentTask["status"][] = [
 export function RunRow({ task, issueId }: Props) {
   const { getName } = useActorLookup();
   const { t } = useT("issues");
+  const { colorScheme } = useColorScheme();
+  const theme = THEME[colorScheme === "dark" ? "dark" : "light"];
   const workspace = useWorkspaceStore((s) => s.currentWorkspaceSlug);
   const isActive = isCancellableRunStatus(task.status);
   const isTerminal = TERMINAL_STATUSES.includes(task.status);
@@ -69,7 +73,7 @@ export function RunRow({ task, issueId }: Props) {
         <Ionicons
           name="chevron-forward"
           size={16}
-          className="text-muted-foreground"
+          color={theme.mutedForeground}
         />
       ) : null}
     </>

@@ -44,7 +44,10 @@ export default function RunTranscriptRoute() {
     );
   }
 
-  if (tasksQuery.error || transcriptQuery.error) {
+  if (
+    (tasksQuery.error && !tasksQuery.data) ||
+    (transcriptQuery.error && !transcriptQuery.data)
+  ) {
     return (
       <StateMessage text={t("runs.transcript.load_error")}>
         <Button variant="outline" onPress={retry}>
