@@ -1,3 +1,7 @@
+import type { AgentTask, TaskMessagePayload } from "@multica/core/types";
+import { redactSecrets } from "@multica/core/security/redact-secrets";
+import { failureReasonKey } from "./failure-reason-label";
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -17,4 +21,48 @@ export function runTranscriptRoute(
 
 export function isRunTranscriptTaskId(taskId: unknown): taskId is string {
   return typeof taskId === "string" && UUID_PATTERN.test(taskId);
+}
+
+export function isCancellableRunStatus(status: AgentTask["status"]): boolean {
+  return (
+    status === "queued" ||
+    status === "deferred" ||
+    status === "dispatched" ||
+    status === "waiting_local_directory" ||
+    status === "running"
+  );
+}
+
+/** Match web transcript semantics without importing its UI or query layer. */
+export function buildRunTranscript(
+  messages: readonly TaskMessagePayload[],
+): TaskMessagePayload[] {
+  const items: TaskMessagePayload[] = [];
+  for (const message of [...messages].sort((a, b) => a.seq - b.seq)) {
+    const previous = items[items.length - 1];
+    if (
+      previous &&
+      (message.type === "text" || message.type === "thinking") &&
+      previous.type === message.type
+    ) {
+      previous.content = `${previous.content ?? ""}${message.content ?? ""}`;
+      previous.created_at = message.created_at ?? previous.created_at;
+    } else {
+      items.push({ ...message });
+    }
+  }
+  // Redact after coalescing: a credential may span two daemon flushes.
+  return items.map((item) => ({
+    ...item,
+    content: item.content ? redactSecrets(item.content) : item.content,
+    output: item.output ? redactSecrets(item.output) : item.output,
+  }));
+}
+
+export function getRunDiagnostics(
+  task: Pick<AgentTask, "status" | "failure_reason" | "error">,
+) {
+  const reasonKey = task.status === "failed" ? failureReasonKey(task.failure_reason) : null;
+  const error = task.error?.trim() ? redactSecrets(task.error) : null;
+  return reasonKey || error ? { reasonKey, error } : null;
 }

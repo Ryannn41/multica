@@ -2,9 +2,8 @@
  * Single row inside the agent-runs formSheet route
  * (`app/(app)/[workspace]/issue/[id]/runs.tsx`). Same component for active
  * and past tasks —
- * the trailing Cancel button is conditional on `status in {queued,
- * dispatched, running}`, and the status badge / colour swaps based on the
- * AgentTask.status enum.
+ * the trailing Cancel button is available for every cancellable status,
+ * and the status badge / colour swaps based on the AgentTask.status enum.
  *
  * Terminal runs open their persisted execution record. Active rows keep the
  * cancel affordance and are not links: this route is for historical records.
@@ -20,7 +19,7 @@ import { useActorLookup } from "@/data/use-actor-name";
 import { runFailureBadgeLabel } from "@/lib/run-failure-badge";
 import { timeAgo } from "@/lib/time-ago";
 import { useT } from "@/lib/i18n";
-import { runTranscriptRoute } from "@/lib/run-transcript";
+import { isCancellableRunStatus, runTranscriptRoute } from "@/lib/run-transcript";
 import { useWorkspaceStore } from "@/data/workspace-store";
 
 interface Props {
@@ -28,11 +27,6 @@ interface Props {
   issueId: string;
 }
 
-const ACTIVE_STATUSES: readonly AgentTask["status"][] = [
-  "queued",
-  "dispatched",
-  "running",
-];
 const TERMINAL_STATUSES: readonly AgentTask["status"][] = [
   "completed",
   "failed",
@@ -43,7 +37,7 @@ export function RunRow({ task, issueId }: Props) {
   const { getName } = useActorLookup();
   const { t } = useT("issues");
   const workspace = useWorkspaceStore((s) => s.currentWorkspaceSlug);
-  const isActive = ACTIVE_STATUSES.includes(task.status);
+  const isActive = isCancellableRunStatus(task.status);
   const isTerminal = TERMINAL_STATUSES.includes(task.status);
   const summary =
     task.trigger_summary?.trim() || fallbackSummary(task, t);

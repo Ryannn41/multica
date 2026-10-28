@@ -226,7 +226,9 @@ export default function WorkspaceLayout() {
           name="issue/[id]/run/[taskId]"
           options={{
             title: t("navigation:routes.execution_record"),
-            headerBackTitle: t("navigation:routes.runs"),
+            // Opened above the runs formSheet; dismiss back to that sheet.
+            presentation: "modal",
+            headerLeft: () => <ModalCloseButton />,
           }}
         />
         {/* Full emoji picker for a comment reaction. Pushed from the "+"

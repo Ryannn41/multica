@@ -255,7 +255,10 @@
       "output": "Output",
       "error": "Error",
       "unknown_tool": "Unknown tool",
-      "truncated": "This output was truncated."
+      "truncated": "This output was truncated when saved.",
+      "diagnostics": "Technical details",
+      "show_full_output": "Show full output",
+      "show_less": "Show less"
     },
     "status": {
       "queued": "Queued",

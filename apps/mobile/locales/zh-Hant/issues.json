@@ -251,7 +251,10 @@
       "output": "輸出",
       "error": "錯誤",
       "unknown_tool": "未知工具",
-      "truncated": "此輸出已截斷。"
+      "truncated": "此輸出在儲存時已截斷。",
+      "diagnostics": "技術詳情",
+      "show_full_output": "展開完整輸出",
+      "show_less": "收起"
     },
     "status": {
       "queued": "排隊中",

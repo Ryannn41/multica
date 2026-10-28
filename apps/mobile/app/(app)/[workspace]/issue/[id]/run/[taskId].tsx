@@ -1,4 +1,4 @@
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Text } from "@/components/ui/text";
@@ -60,25 +60,24 @@ export default function RunTranscriptRoute() {
     task.trigger_summary?.trim() || t("summary.direct");
 
   return (
-    <ScrollView
-      className="flex-1"
-      contentContainerClassName="gap-4 px-4 py-4"
-      showsVerticalScrollIndicator={false}
-    >
-      <View className="flex-row items-start gap-3 rounded-lg bg-muted/40 px-3 py-3">
-        <ActorAvatar type="agent" id={task.agent_id} size={32} showPresence />
-        <View className="min-w-0 flex-1 gap-1">
-          <Text className="text-sm font-semibold text-foreground">
-            {getName("agent", task.agent_id)}
-          </Text>
-          <Text className="text-sm text-muted-foreground">{summary}</Text>
-          <Text className={statusClass(task.status)}>
-            {t(`runs.status.${task.status}`)}
-          </Text>
+    <RunTranscript
+      task={task}
+      items={transcriptQuery.data ?? []}
+      header={
+        <View className="flex-row items-start gap-3 rounded-lg bg-muted/40 px-3 py-3">
+          <ActorAvatar type="agent" id={task.agent_id} size={32} showPresence />
+          <View className="min-w-0 flex-1 gap-1">
+            <Text className="text-sm font-semibold text-foreground">
+              {getName("agent", task.agent_id)}
+            </Text>
+            <Text className="text-sm text-muted-foreground">{summary}</Text>
+            <Text className={statusClass(task.status)}>
+              {t(`runs.status.${task.status}`)}
+            </Text>
+          </View>
         </View>
-      </View>
-      <RunTranscript items={transcriptQuery.data ?? []} />
-    </ScrollView>
+      }
+    />
   );
 }
 
